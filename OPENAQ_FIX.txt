@@ -1,0 +1,78 @@
+// This is a simple test - please copy the FULL content from the backup
+// The OpenAQ v3 /latest endpoint returns measurements without parameter names
+// We need to match measurements to sensors using sensorsId
+
+async function fetchLocationLatest(locationId, apiKey) {
+    try {
+        // First get location details to know which sensors measure which parameters
+        const locationUrl = `/api/openaq/v3/locations/${locationId}`;
+        const locationResponse = await fetch(locationUrl, { headers: { 'X-API-Key': apiKey } });
+        const locationData = await locationResponse.json();
+        
+        // Then get latest measurements
+        const latestUrl = `/api/openaq/v3/locations/${locationId}/latest`;
+        const latestResponse = await fetch(latestUrl, { headers: { 'X-API-Key': apiKey } });
+        const latestData = await latestResponse.json();
+        
+        console.log('Location data:', locationData);
+        console.log('Latest data:', latestData);
+        
+        if (latestData.results && latestData.results.length > 0 && locationData.results) {
+            const location = locationData.results;
+            const measurements = latestData.results;
+            
+            // Map sensor IDs to parameter names
+            const sensorMap = {};
+            if (location.sensors) {
+                location.sensors.forEach(sensor => {
+                    sensorMap[sensor.id] = sensor.parameter.name;
+                });
+            }
+            
+            // Create parameter-value map
+            const parameterData = {};
+            measurements.forEach(m => {
+                const paramName = sensorMap[m.sensorsId];
+                if (paramName) {
+                    parameterData[paramName] = m.value;
+                }
+            });
+            
+            console.log('Parameter data:', parameterData);
+            displayAirQualityDataOpenAQv3(parameterData, location.name);
+        } else {
+            displayMockAirQuality();
+        }
+    } catch (error) {
+        console.error('Error fetching latest:', error);
+        displayMockAirQuality();
+    }
+}
+
+function displayAirQualityDataOpenAQv3(params, stationName) {
+    const pm25 = params['pm25'] || params['PM2.5'];
+    const pm10 = params['pm10'] || params['PM10'];
+    const o3 = params['o3'] || params['O3'];
+    const no2 = params['no2'] || params['NO2'];
+    
+    const aqi = pm25 ? calculateAQI(pm25) : 0;
+    
+    document.getElementById('aqi-value').textContent = aqi > 0 ? Math.round(aqi) : '--';
+    document.getElementById('pm25').textContent = pm25 ? `${Math.round(pm25)} µg/m³` : 'N/A';
+    document.getElementById('pm10').textContent = pm10 ? `${Math.round(pm10)} µg/m³` : 'N/A';
+    document.getElementById('o3').textContent = o3 ? `${Math.round(o3)} µg/m³` : 'N/A';
+    document.getElementById('no2').textContent = no2 ? `${Math.round(no2)} µg/m³` : 'N/A';
+    
+    if (aqi > 0) {
+        updateAQIBadge(aqi);
+    } else {
+        const badge = document.getElementById('aqi-badge');
+        badge.textContent = 'Data Available';
+        badge.className = 'aqi-badge aqi-good';
+    }
+    
+    hideLoading('air');
+    if (stationName) {
+        showStationInfo(stationName);
+    }
+}

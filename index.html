@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hello World - Weather & Air Quality</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <div class="container">
+        <div class="greeting-card">
+            <h1 class="display-3 fw-bold mb-2">Hello World! 👋</h1>
+            <p class="lead text-muted">Real-time Weather & Air Quality Dashboard</p>
+        </div>
+
+        <!-- Location Selector with Datalists -->
+        <div class="location-selector mb-4 d-flex gap-3 flex-wrap">
+            <div class="form-floating flex-grow-1 position-relative">
+                <input class="form-control ps-5 pe-5" list="country-list" id="country-input"
+                    placeholder="Start typing country name...">
+                <label for="country-input" class="ps-5">🌍 Country</label>
+                <span class="position-absolute top-50 start-0 translate-middle-y ms-3 text-muted fs-5">🔍</span>
+                <button type="button" class="btn-clear" id="clear-country" onclick="clearCountry()"
+                    style="display: none;">×</button>
+                <datalist id="country-list">
+                    <!-- Populated by JS -->
+                </datalist>
+            </div>
+            <div class="form-floating flex-grow-1 position-relative">
+                <input class="form-control ps-5 pe-5" list="city-list" id="city-input"
+                    placeholder="Start typing city name..." disabled>
+                <label for="city-input" class="ps-5">🏙️ City</label>
+                <span class="position-absolute top-50 start-0 translate-middle-y ms-3 text-muted fs-5">📍</span>
+                <button type="button" class="btn-clear" id="clear-city" onclick="clearCity()"
+                    style="display: none;">×</button>
+                <datalist id="city-list">
+                    <!-- Populated by JS -->
+                </datalist>
+            </div>
+        </div>
+
+        <!-- Welcome Prompt (shown when no location selected) -->
+        <div class="data-card mb-4 welcome-prompt" id="welcome-prompt">
+            <div class="text-center py-5">
+                <div class="mb-4" style="font-size: 4rem;">📍</div>
+                <h3 class="mb-3">Welcome to Your Weather Dashboard!</h3>
+                <p class="text-muted mb-4">Please select a country and city above to view weather, air quality, and
+                    flood risk information.</p>
+                <div class="d-flex justify-content-center gap-2 flex-wrap">
+                    <span class="badge bg-primary">🌤️ Real-time Weather</span>
+                    <span class="badge bg-success">💨 Air Quality</span>
+                    <span class="badge bg-info">🌊 Flood Risk</span>
+                    <span class="badge bg-warning">📅 7-Day Forecast</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Forecast & History Panel -->
+        <div class="data-card mb-4 forecast-card" id="forecast-card" style="display: none;">
+            <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-3 border-0 pb-0">
+                <div class="d-flex align-items-center gap-2">
+                    <span class="fs-2">📅</span>
+                    <h3 class="mb-0">Forecast & History</h3>
+                </div>
+                <div class="d-flex align-items-center gap-2 flex-wrap">
+                    <div class="btn-group" role="group">
+                        <button type="button" class="btn btn-outline-primary btn-sm"
+                            onclick="selectPrevWeek()">Previous</button>
+                        <button type="button" class="btn btn-outline-primary btn-sm"
+                            onclick="selectCurrentWeek()">Current</button>
+                        <button type="button" class="btn btn-outline-primary btn-sm"
+                            onclick="selectNextWeek()">Next</button>
+                    </div>
+                    <div class="d-flex align-items-center gap-2 bg-light rounded-pill px-3 py-1">
+                        <label for="week-select" class="form-label mb-0 text-muted small fw-bold text-uppercase"
+                            style="font-size: 0.7rem;">Select Week</label>
+                        <input type="week" id="week-select"
+                            class="form-control form-control-sm border-0 bg-transparent p-0"
+                            style="width: 130px; box-shadow: none;">
+                    </div>
+                </div>
+            </div>
+            <div class="card-content mt-4">
+                <div id="forecast-loading" class="text-center py-5" style="display: none;">
+                    <div class="spinner-border text-primary" role="status"></div>
+                    <p class="mt-3 text-muted fw-medium">Loading forecast data...</p>
+                </div>
+                <div id="forecast-content" class="row row-cols-2 row-cols-md-5 g-3 text-center">
+                    <!-- Daily Cards injected here -->
+                </div>
+                <div id="forecast-error" class="text-center py-4" style="display: none;">
+                    <div class="text-muted mb-2" style="font-size: 3rem;">🔭</div>
+                    <h5 class="text-muted">Forecast Unavailable</h5>
+                    <p class="text-muted small">We can't see that far into the future yet!</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Flood Risk Card -->
+        <div class="data-card mb-4 flood-card" id="flood-card" style="display: none;">
+            <div class="card-header">
+                <h3>🌊 Flood Risk</h3>
+                <span id="flood-badge" class="flood-badge">--</span>
+            </div>
+            <div id="flood-loading" class="loading-state" style="display: none;">
+                <div class="spinner-border text-info" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <p class="mt-2">Fetching flood data...</p>
+            </div>
+            <div id="flood-content" class="card-content" style="display: none;">
+                <div class="flood-info">
+                    <div class="detail-item">
+                        <span class="detail-label">River Discharge</span>
+                        <span id="river-discharge" class="detail-value">-- m³/s</span>
+                    </div>
+                    <div class="detail-item">
+                        <span class="detail-label">Peak Discharge</span>
+                        <span id="discharge-peak" class="detail-value">-- m³/s</span>
+                    </div>
+                    <div class="detail-item">
+                        <span class="detail-label">72h Rainfall</span>
+                        <span id="rainfall-value" class="detail-value">-- mm</span>
+                    </div>
+                    <div class="detail-item">
+                        <span class="detail-label">Elevation</span>
+                        <span id="elevation-value" class="detail-value">-- m</span>
+                    </div>
+                    <div class="detail-item">
+                        <span class="detail-label">Soil Moisture</span>
+                        <span id="soil-moisture" class="detail-value">-- m³/m³</span>
+                    </div>
+                    <div class="detail-item">
+                        <span class="detail-label">Snow Depth</span>
+                        <span id="snow-depth" class="detail-value">-- m</span>
+                    </div>
+                </div>
+                <div id="flood-status" class="alert alert-danger mt-3" style="display: none;">
+                    <strong>⚠️ CRITICAL WARNING:</strong> Likely Flooded!
+                </div>
+                <div class="alert alert-secondary mt-3 mb-0" style="font-size: 0.85rem;">
+                    <strong>ℹ️ Disclaimer:</strong> All flood risk information is based on statistical estimation and
+                    predictive models. Data may not reflect real-time conditions and should not be used as the sole
+                    basis for emergency decisions. Always consult official local authorities and emergency services for
+                    current flood warnings and safety guidance.
+                </div>
+            </div>
+            <div id="flood-error" class="error-state" style="display: none;">
+                <p>❌ Failed to load flood data</p>
+            </div>
+        </div>
+
+        <div class="row g-4">
+            <!-- Weather Card -->
+            <div class="col-md-6">
+                <div class="data-card weather-card" id="weather-card" style="display: none;">
+                    <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+                        <div>
+                            <h3>🌤️ Weather</h3>
+                            <div class="d-flex align-items-center gap-2 mt-2">
+                                <span id="location" class="location-badge" data-bs-toggle="tooltip"
+                                    title="Current Location">--</span>
+                                <span id="country-iso" class="text-muted"></span>
+                            </div>
+                        </div>
+                        <button type="button" class="btn btn-sm btn-outline-warning" id="set-default-btn"
+                            onclick="saveDefaultCity()" style="display: none;">
+                            ⭐ Set as Default
+                        </button>
+                    </div>
+                    <div id="weather-loading" class="loading-state">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        <p class="mt-2">Fetching weather data...</p>
+                    </div>
+                    <div id="weather-content" class="card-content" style="display: none;">
+                        <div id="weather-icon" class="weather-icon text-center mb-2" style="font-size: 4rem;"></div>
+                        <div class="temperature-display">
+                            <span id="temperature" class="temperature" data-bs-toggle="tooltip"
+                                title="Current Temperature">--</span>
+                            <span class="unit">°C</span>
+                        </div>
+                        <div class="weather-details">
+                            <div class="detail-item" data-bs-toggle="tooltip" title="What it actually feels like">
+                                <span class="detail-label">Feels Like</span>
+                                <span id="feels-like" class="detail-value">--°C</span>
+                            </div>
+                            <div class="detail-item" data-bs-toggle="tooltip" title="Relative Humidity">
+                                <span class="detail-label">Humidity</span>
+                                <span id="humidity" class="detail-value">--%</span>
+                            </div>
+                            <div class="detail-item" data-bs-toggle="tooltip" title="Wind Speed at 10m">
+                                <span class="detail-label">Wind Speed</span>
+                                <span id="wind-speed" class="detail-value">-- km/h</span>
+                            </div>
+                            <div class="detail-item" data-bs-toggle="tooltip" title="Current Conditions">
+                                <span class="detail-label">Conditions</span>
+                                <span id="conditions" class="detail-value">--</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="weather-error" class="error-state" style="display: none;">
+                        <p>❌ Failed to load weather data</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Air Quality Card -->
+            <div class="col-md-6">
+                <div class="data-card air-quality-card" id="aqi-card" style="display: none;">
+                    <div class="card-header">
+                        <h3>💨 Air Quality</h3>
+                        <span id="aqi-badge" class="aqi-badge" data-bs-toggle="tooltip"
+                            title="Overall Air Quality Index">--</span>
+                    </div>
+                    <div id="air-loading" class="loading-state">
+                        <div class="spinner-border text-success" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        <p class="mt-2">Fetching air quality data...</p>
+                    </div>
+                    <div id="air-content" class="card-content" style="display: none;">
+                        <div class="aqi-display">
+                            <span id="aqi-value" class="aqi-value" data-bs-toggle="tooltip"
+                                title="US AQI Value">--</span>
+                            <span class="aqi-label">AQI</span>
+                        </div>
+                        <div class="air-details">
+                            <div class="detail-item" data-bs-toggle="tooltip" title="Particulate Matter < 2.5µm">
+                                <span class="detail-label">PM2.5</span>
+                                <span id="pm25" class="detail-value">-- µg/m³</span>
+                            </div>
+                            <div class="detail-item" data-bs-toggle="tooltip" title="Particulate Matter < 10µm">
+                                <span class="detail-label">PM10</span>
+                                <span id="pm10" class="detail-value">-- µg/m³</span>
+                            </div>
+                            <div class="detail-item" data-bs-toggle="tooltip" title="Ozone">
+                                <span class="detail-label">O₃</span>
+                                <span id="o3" class="detail-value">-- µg/m³</span>
+                            </div>
+                            <div class="detail-item" data-bs-toggle="tooltip" title="Nitrogen Dioxide">
+                                <span class="detail-label">NO₂</span>
+                                <span id="no2" class="detail-value">-- µg/m³</span>
+                            </div>
+                        </div>
+                        <div id="nearby-stations" class="mt-3"></div>
+                    </div>
+                    <div id="air-error" class="error-state" style="display: none;">
+                        <p>❌ Failed to load air quality data</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="footer-info mt-4">
+            <p>Data sources: <a href="https://open-meteo.com" target="_blank">OpenMeteo</a> • <a
+                    href="https://aqicn.org" target="_blank">WAQI</a> • <a href="https://www.gdacs.org"
+                    target="_blank">GDACS</a></p>
+            <p class="text-muted small">Last updated: <span id="last-update">--</span></p>
+        </div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="config.js"></script>
+    <script src="app.js"></script>
+</body>
+
+</html>
